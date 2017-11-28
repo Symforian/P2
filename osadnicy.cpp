@@ -2,61 +2,90 @@
 #include <pthread.h>
 #include <cstdlib>
 #include <time.h>
+#include <semaphore.h>
+#include <unistd.h>
 using namespace std;
+int Czas = 365;
+sem_t Time;
 int kostka()
 {
 	return rand()%6+1;
 }
 int mysliwi, kucharze, zwierzyna, pozywienie;
-pthread_mutex_t zwierzynaLock;
-pthread_mutex_t pozywienieLock;
+//int sleeping=0;
+int blocked=0;
+int today = 0;
+pthread_mutex_t zwierzynaLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pozywienieLock = PTHREAD_MUTEX_INITIALIZER; ;//, 
+pthread_mutex_t BlockLock = PTHREAD_MUTEX_INITIALIZER;
 void *poluj(void*)
 {
-	bool sleep = false;
-	while(!sleep)
+	//bool sleep = false;
+	for(int i =0; i<Czas; i++)
 	{
-	pthread_mutex_lock(&zwierzynaLock);
+	cout<<"Myśliwy żyje dzień "<<i<<endl;
 	int mys = kostka();
 	int zwierz = kostka();
 	if(mys>zwierz)
 	{
-	zwierzyna--;
-	pozywienie++;
-	}
-	sleep = true;
+	pthread_mutex_lock(&zwierzynaLock);
+	if(zwierzyna>0)
+		{
+		zwierzyna--;
+		pthread_mutex_unlock(&zwierzynaLock);
+		pthread_mutex_lock(&pozywienieLock);
+		pozywienie++;
+		pthread_mutex_unlock(&pozywienieLock);
+		cout<<"\nMyśliwy:UPOLOWAŁ.\n";
+		}
+	else
 	pthread_mutex_unlock(&zwierzynaLock);
+	}
+	pthread_mutex_lock(&pozywienieLock);
+	if(pozywienie>0)
+	{	
+	pozywienie--;
+	pthread_mutex_unlock(&pozywienieLock);
+	cout<<"\nMyśliwy:ZJADŁ.\n";
+	}	
+	else
+	{
+	pthread_mutex_unlock(&pozywienieLock);
+	cout<<"\nMyśliwy:DEAD.\n";
+	mysliwi--;
+	break;
+	}
+	int wut;
+
+	cout<<"\nMyśliwy:ZzZzZz.\n";//<<wut<<endl;
+	//while(sem_wait(&Time)!=-1)
+	//if(sem_wait(&Time)==-1 && errno == EINTR)
+	//while(
+	//while(blocked==-1)
+	//usleep(1);
+	blocked++;
+	//for(int i=0; i<mysliwi;i++)
+	//sem_getvalue(&Time,&wut);
+	//cout<<wut<<endl;
+	if(sem_wait(&Time)==-1)
+	perror("Error sem wait");
+	
+	while(true)
+	{
+	//cout<<"zzzz"<<endl;
+	if(today>i)
+	break;
+	}
+
+	//else 
+	//	break;
+	//sem_getvalue(&Time,&wut);
+	cout<<"\nMyśliwy wstał.\n";//<<wut<<endl;
 	}
 
 	return NULL;
 }
-/*void *what_to_tell_a(void*)
-{
-	cout<<"Hello world, thread a there!\n";
-	return NULL;
-}
-void *what_to_tell_b(void*)
-{
-	cout<<"Hello world, thread b there!\n";
-	return NULL;
-}
-void *what_to_tell_c(void*)
-{
-	cout<<"Hello world, thread c there!\n";
-	return NULL;
-}
-void *make_some_threads(void*)
-{
-	pthread_t a,b,c;
-	pthread_create(&a, NULL, &what_to_tell_a,NULL);
-	pthread_create(&b, NULL, &what_to_tell_b,NULL);
-	pthread_create(&c, NULL, &what_to_tell_c,NULL);
-	pthread_join(a,NULL);
-	pthread_join(b,NULL);
-	pthread_join(c,NULL);
-	cout<<"Hello world, parent thread there!\n";
-	void* result=NULL;
-	return result;
-}*/
+
 
 int main( int argc, char * argv[] )
 {
@@ -85,31 +114,105 @@ int main( int argc, char * argv[] )
 
 		}
 	}
-	if (pthread_mutex_init(&zwierzynaLock,NULL) != 0)
+	/*if (pthread_mutex_init(&zwierzynaLock,NULL) != 0)
 	{
-		printf("\n mutex init failed\n");
+		printf("\n zwierzyna mutex init failed\n");
 		return 1;
 	}
+	if (pthread_mutex_init(&pozywienieLock,NULL) != 0)
+	{
+		printf("\n pozywienie mutex init failed\n");
+		return 1;
+	}*/
+	//if (pthread_mutex_init(&BlockLock,NULL) != 0)
+	//{
+	//	printf("\n BlockLock mutex init failed\n");
+	//	return 1;
+	//}
 	cout<<"Myśliwych jest "<<mysliwi<<"\n Kucharzy jest "<<kucharze<<"\n Zwierzyny jest "<<zwierzyna<<"\n Pożywienia jest "<<pozywienie<<endl;
+	int byloM = mysliwi;
+	//int byloK = kucharze; 
 	pthread_t pthread_mysliwi[mysliwi];
+	//cout<<sleeping<<"<"<<endl;
+	if(sem_init(&Time, 0, 0)==-1)
+	{
+		printf("\n Semafor init error\n");
+		return 1;
+	}
+	//cout<<sleeping<<"<"<<endl;
+	//if(sem_open("Time",5)==SEM_FAILED)
+	//{
+	//	cout<<"\n Semafor init error\n"<<sem_open("Time",O_CREAT);
+	//	return 1;
+	//}
+	//else
+	//Time = *sem_open("Times",O_CREAT);
+	
+
+	//sem_getvalue(&Time,&sleeping);
+	//cout<<sleeping<<endl;
 	for(int i=0; i<mysliwi; i++)
 	{
 		pthread_create(&pthread_mysliwi[i],NULL,&poluj,NULL);
 	}
-	//pthread_t parent_thread;
-	//pthread_create(&parent_thread, NULL, &make_some_threads,NULL);
-	//pthread_join(parent_thread,NULL);
-	//cout<<"Hello world, main there!\n";
-	for(int i =0; i<365; i++)
+
+	while(mysliwi!=0)
 	{
-	cout<<"Dzień "<<i+1<<"\nMyśliwych jest "<<mysliwi<<"\n Kucharzy jest "<<kucharze<<"\n Zwierzyny jest "<<zwierzyna<<"\n Pożywienia jest "<<pozywienie<<endl;
+		//sem_getvalue(&Time,&sleeping);
+		if(blocked==mysliwi)//nowy dzien
+		{
+
+
+			cout<<"---Dzień "<<today+1<<"---"<<endl;
+			cout<<"Pożywienie: "<<pozywienie<<"\tZwierzyna: "<<zwierzyna<<endl;
+			//pthread_mutex_lock(&BlockLock);
+			
+			
+			for(int i = 0; i<=blocked; i++)
+				{if(sem_post(&Time)==-1)
+perror("Error sem post");}
+//sem_getvalue(&Time,&sleeping);
+//cout<<"WSTAWAC! "<<sleeping<<endl;}
+			//pthread_mutex_unlock(&BlockLock);
+			today++;
+			blocked=0;
+		}
+	//cout<<blocked<<endl;
+
+
+
+
 	}
-	//for(int i = 0; i < 10; i++)
-	//	cout<<kostka()<<endl;
-	for(int i=0; i<mysliwi; i++)
+	/*for(int i =0; i<Czas; i++)
+	{
+	//if(sleeping+mysliwi==-1)
+	//for(int i=0; i<mysliwi;)
+	//{
+	//	sem_post(&Time);
+	//}
+	sem_getvalue(&Time,&sleeping);
+	cout<<"Dzień "<<i+1<<"\n Myśliwych jest "<<mysliwi<<"\n Kucharzy jest "<<kucharze<<"\n Zwierzyny jest "<<zwierzyna<<"\n Pożywienia jest "<<pozywienie<<endl<<sleeping<<endl;
+	
+	if(mysliwi == 0)
+	{
+	cout<<"\nWszyscy myśliwi zmarli\n";
+	break;
+	}
+	sem_getvalue(&Time,&sleeping);
+	//while(sleeping+mysliwi<-1)
+	//{
+	//	sem_getvalue(&Time,&sleeping);
+	//}
+
+	}*/
+
+	for(int i=0; i<byloM; i++)
 	{
 		pthread_join(pthread_mysliwi[i],NULL);
 	}
 	pthread_mutex_destroy(&zwierzynaLock);
+	pthread_mutex_destroy(&pozywienieLock);
+	//pthread_mutex_destroy(&BlockLock);
+	sem_destroy(&Time);
 	return 0;
 }
