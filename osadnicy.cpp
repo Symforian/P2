@@ -6,6 +6,7 @@
 using namespace std;
 
 int mysliwi, kucharze, zwierzyna, pozywienie;
+int M, K;
 pthread_mutex_t Lock = PTHREAD_MUTEX_INITIALIZER;
 
 int kostka()
@@ -18,17 +19,15 @@ void *poluj(void*)
 
 	for(int i =0; i<365; i++)
 	{
+
 		int mys = kostka();
 		int zwierz = kostka();
+
 		if(mys>zwierz)
 		{
-			pthread_mutex_lock(&Lock);
-			if(zwierzyna>0)
-				{
-				zwierzyna--;
-				//cout<<"\nMyśliwy:UPOLOWAŁ.\n";
-				}
-			pthread_mutex_unlock(&Lock);
+		pthread_mutex_lock(&Lock);
+			zwierzyna++;
+		pthread_mutex_unlock(&Lock);
 		}
 
 		pthread_mutex_lock(&Lock);
@@ -40,14 +39,14 @@ void *poluj(void*)
 		}	
 		else
 		{
-			mysliwi--;
+			M--;
 			pthread_mutex_unlock(&Lock);
 		//	cout<<"\nMyśliwy:DEAD.\n";
 			pthread_exit(NULL);
 		}
 		usleep(100);
 	}
-	//cout<<"\nMyśliwy:FIN--------------------.\n";
+	//cout<<"\nMyśliwy:FIN.\n";
 	return NULL;
 }
 void *gotuj(void*)
@@ -56,6 +55,7 @@ void *gotuj(void*)
 
 	for(int i =0; i<365; i++)
 	{
+
 		int talent = kostka();
 		pthread_mutex_lock(&Lock);
 		if(zwierzyna>0)
@@ -74,14 +74,14 @@ void *gotuj(void*)
 		}
 		else
 		{
-			kucharze--;
+			K--;
 			pthread_mutex_unlock(&Lock);
 		//	cout<<"\nKucharz:DEAD.\n";
 			pthread_exit(NULL);
 		}
 		usleep(100);
 	}
-	//cout<<"\nKucharz:FIN-----------------.\n";
+	//cout<<"\nKucharz:FIN.\n";
 	return NULL;
 }
 
@@ -106,36 +106,35 @@ int main( int argc, char * argv[] )
 
 	pthread_t pthread_mysliwi[mysliwi];
 	pthread_t pthread_kucharze[kucharze];
-	int M = mysliwi;
-	int K = kucharze;
+	M = mysliwi;
+	K = kucharze;
 	for(int i=0; i<mysliwi; i++)
 	{
 		if(pthread_create(&pthread_mysliwi[i],NULL,&poluj,NULL)!=0)
-			cout<<"ERROR"<<endl;
+			cout<<"ERROR creating mysliwy "<<i<<endl;
 	}
 
 	for(int i=0; i<kucharze; i++)
 	{
 		if(pthread_create(&pthread_kucharze[i],NULL,&gotuj,NULL)!=0)
-			cout<<"ERROR"<<endl;
+			cout<<"ERROR creating kucharz "<<i<<endl;
 	}
 
-	for(int i=0; i<M; i++)
+	for(int i=0; i<mysliwi; i++)
 	{
-		cout<<"M"<<i<<endl;
-		pthread_join(pthread_mysliwi[i],NULL);
-		cout<<"M"<<i<<endl;
+		if(pthread_join(pthread_mysliwi[i],NULL)!=0)
+			cout<<"ERROR joining mysliwy "<<i<<endl;
 	}
 
-	for(int i=0; i<K; i++)
+	for(int j=0; j<kucharze; j++)
 	{
-		cout<<"K"<<i<<endl;
-		pthread_join(pthread_kucharze[i],NULL);
-		cout<<"K"<<i<<endl;
+		if(pthread_join(pthread_kucharze[j],NULL)!=0)
+			cout<<"ERROR joining kucharz "<<j<<endl;
 	}
 
 
 	pthread_mutex_destroy(&Lock);
-	cout<<"------------------------\nPo wszystkim:\nMyśliwych jest "<<mysliwi<<"\n Kucharzy jest "<<kucharze<<"\n Zwierzyny jest "<<zwierzyna<<"\n Pożywienia jest "<<pozywienie<<endl;
+	cout<<"------------------------\nPo wszystkim:\nMyśliwych jest "<<M<<"\n Kucharzy jest "<<K<<"\n Zwierzyny jest "<<zwierzyna<<"\n Pożywienia jest "<<pozywienie<<endl;
+	//cout<<"Myśliwych bylo "<<mysliwi<<"\n Kucharzy bylo "<<kucharze<<endl;
 	return 0;
 }
